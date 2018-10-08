@@ -1,7 +1,10 @@
 // implicit
 WHITESPACE = _{ " " | "\n" | "\t" | "\r" }
-COMMENT = ${ "//" ~ comment_inner ~ (NEWLINE | &EOI) }
-comment_inner = @{ (!NEWLINE ~ ANY)* }
+COMMENT = ${ line_comment | block_comment }
+line_comment = { "//" ~ line_comment_inner ~ (NEWLINE | &EOI) }
+line_comment_inner = { (!NEWLINE ~ ANY)* }
+block_comment = { "/*" ~ (block_comment | block_comment_inner)  ~ "*/" }
+block_comment_inner = { (!"*/" ~ ANY)* }
 
 // booleans
 bool = { "true" | "false" }
@@ -9,12 +12,10 @@ bool = { "true" | "false" }
 // numbers
 sign = { "+" | "-" }
 
-// // ints
 signed_int = @{ sign? ~ unsigned_int }
-unsigned_int = { base_prefix? ~ ASCII_DIGIT+ }
-base_prefix = { "0" ~ ("x" | "b" | "o") }
+unsigned_int = { with_base | ASCII_DIGIT+ }
+with_base = { "0" ~ ("x" | "b" | "o") ~ ASCII_HEX_DIGIT+ }
 
-// // floats
 float = @{ float_std | float_frac }
 float_std = { sign? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT* ~ float_exp? }
 float_frac = { "." ~ ASCII_DIGIT+ ~ float_exp? }
@@ -22,13 +23,17 @@ float_exp = { ("e" | "E") ~ ASCII_DIGIT+ }
 
 // chars
 char = ${ "'" ~ char_inner ~ "'" }
-char_inner = { "\\'" | "\\\\" | (!"'" ~ ANY) }
+char_inner = { "\\'" | (!"'" ~ ANY)* }
 
 // strings
 string = ${ string_std | string_raw }
 string_std = { "\"" ~ string_std_inner ~ "\"" }
-string_std_inner = { ("\\\"" | (!"\"" ~ ANY))* }
-string_raw = { "r" ~ PUSH("#"*) ~ "\"" ~ string_raw_inner ~ "\"" ~ POP }
+string_std_inner = { ("\\\"" | !"\"" ~ ANY)* }
+string_raw = {
+    "r" ~ PUSH("#"*) ~ "\"" ~
+    string_raw_inner ~
+    "\"" ~ POP
+}
 string_raw_inner = { (!("\"" ~ PEEK) ~ ANY)* }
 
 // collections
@@ -43,16 +48,19 @@ map_entry = { value ~ ":" ~ value }
 // types
 named_inner = { named_field ~ ("," ~ named_field)* ~ ","? }
 named_field = { ident ~ ":" ~ value }
-ident = @{ (ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")*) | ("_" ~ (ASCII_ALPHANUMERIC | "_")+) }
+ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 user_type = { user_type_named | user_type_tuple | user_type_unit }
 user_type_named = { ident? ~ "(" ~ named_inner? ~ ")" }
 user_type_tuple = { ident ~ tuple }
 user_type_unit = { ident }
 
-value = { signed_int | float | bool | char | string | list | map | user_type | tuple }
+value = { float | signed_int | bool | char | string | list | map | user_type | tuple }
 
-extension = { "#" ~ "!" ~ "[" ~ extensions_inner ~ "]" }
-extensions_inner = { "enable" ~ "(" ~ ident ~ ("," ~ ident)* ~ ","? ~ ")" }
+extension = {
+    "#" ~ "!" ~ "[" ~ "enable" ~ "(" ~
+    ident ~ ("," ~ ident)* ~ ","? ~
+    ")" ~ "]"
+}
 
 ron_file = { SOI ~ extension* ~ value ~ EOI }
