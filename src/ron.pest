@@ -1,6 +1,6 @@
 // implicit
 WHITESPACE = _{ " " | "\n" | "\t" | "\r" }
-COMMENT = ${ line_comment | block_comment }
+COMMENT = _{ line_comment | block_comment }
 line_comment = { "//" ~ line_comment_inner ~ (NEWLINE | &EOI) }
 line_comment_inner = { (!NEWLINE ~ ANY)* }
 block_comment = { "/*" ~ (block_comment | block_comment_inner)  ~ "*/" }
@@ -51,11 +51,11 @@ named_field = { ident ~ ":" ~ value }
 ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 user_type = { user_type_named | user_type_tuple | user_type_unit }
-user_type_named = { ident? ~ "(" ~ named_inner? ~ ")" }
+user_type_named = { ident ~ "(" ~ named_inner? ~ ")" }
 user_type_tuple = { ident ~ tuple }
 user_type_unit = { ident }
 
-value = { float | signed_int | bool | char | string | list | map | user_type | tuple }
+value = { float | signed_int | bool | char | string | tuple | list | map | user_type }
 
 extension = {
     "#" ~ "!" ~ "[" ~ "enable" ~ "(" ~

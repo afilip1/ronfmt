@@ -1,25 +1,7 @@
 #![enable
-        (implicit_some  , test,)]
+        (implicit_some  , atest,)]
 #   ![
-enable(unwrap_newtypes)]
+enable(unwrap_newtypes
+    )]
 
-Scene( // class name is optional
-    materials: { // this is a map
-        "metal": (
-            reflectivity: 1.0,
-        ),
-        "plastic": (
-            reflectivity: 0.5,
-        ),
-    },
-    entities: [ // this is an array
-        (
-            name: "hero",
-            material: "metal",
-        ),
-        (
-            name: "monster",
-            material: "plastic",
-        ),
-    ],
-)
+(true, { "a": 1,  "b": 2 })
