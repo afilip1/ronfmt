@@ -50,7 +50,8 @@ fields = { field ~ ("," ~ field)* ~ ","? }
 field = { ident ~ ":" ~ value }
 ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
-named_type = { named_type_fields | named_type_tuple | named_type_unit }
+named_type = { anonymous_type_fields | named_type_fields | named_type_tuple | named_type_unit }
+anonymous_type_fields = { "(" ~ fields? ~ ")" }
 named_type_fields = { ident ~ "(" ~ fields? ~ ")" }
 named_type_tuple = { ident ~ tuple }
 named_type_unit = { ident }

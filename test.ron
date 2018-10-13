@@ -1,7 +1,22 @@
-#![enable
-        (implicit_some  , atest,)]
-#   ![
-enable(unwrap_newtypes
-    )]
+(
+  axes: // blah
+   {
+    "left_paddle":
+     Emulated(      pos:
+     Key(W),
 
-(1, (2,3),0xabc4, -23.56e124, true, '\n', "blah", r#"r"aw"#, [1, 2, 3], {"a": 1, "b": 2}, Unit, Tuple(1,2), Fields(field: 1, other: 2))
+
+                neg: Key(S)),
+
+    "right_paddle"              : Emulated
+    (pos            : Key(Up
+                    ), neg
+            : Key(Down)
+                                ),
+  },
+
+
+  actions:
+
+  {},
+    )
