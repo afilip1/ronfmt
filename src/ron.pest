@@ -46,16 +46,16 @@ map_inner = { map_entry ~ ("," ~ map_entry)* ~ ","? }
 map_entry = { value ~ ":" ~ value }
 
 // types
-named_inner = { named_field ~ ("," ~ named_field)* ~ ","? }
-named_field = { ident ~ ":" ~ value }
+fields = { field ~ ("," ~ field)* ~ ","? }
+field = { ident ~ ":" ~ value }
 ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
-user_type = { user_type_named | user_type_tuple | user_type_unit }
-user_type_named = { ident ~ "(" ~ named_inner? ~ ")" }
-user_type_tuple = { ident ~ tuple }
-user_type_unit = { ident }
+named_type = { named_type_fields | named_type_tuple | named_type_unit }
+named_type_fields = { ident ~ "(" ~ fields? ~ ")" }
+named_type_tuple = { ident ~ tuple }
+named_type_unit = { ident }
 
-value = { float | signed_int | bool | char | string | tuple | list | map | user_type }
+value = { float | signed_int | bool | char | string | tuple | list | map | named_type }
 
 extension = {
     "#" ~ "!" ~ "[" ~ "enable" ~ "(" ~
