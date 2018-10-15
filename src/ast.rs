@@ -24,8 +24,13 @@ impl<'a> From<Pair<'a, Rule>> for Ast {
                 let mut iter = value.into_inner();
                 let extensions = iter
                     .take_while_ref(|item| item.as_rule() == Rule::extension)
-                    .map(|ext| ext.as_str().into())
-                    .collect();
+                    .map(|exts| {
+                        exts.into_inner()
+                            .map(|ext| ext.as_str().to_string())
+                            .collect()
+                    })
+                    .next()
+                    .unwrap_or_default();
                 let ast = iter.next().map(Ast::from).unwrap();
                 debug_assert!(iter.next().unwrap().as_rule() == Rule::EOI);
 

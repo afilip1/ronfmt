@@ -1,6 +1,6 @@
 use super::Ast;
-use std::fmt::{self, Display, Formatter};
 use itertools::Itertools;
+use std::fmt::{self, Display, Formatter};
 
 const TAB_SIZE: usize = 4;
 
