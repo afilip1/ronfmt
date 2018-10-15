@@ -3,10 +3,11 @@ mod display;
 use super::Rule;
 use itertools::Itertools;
 use pest::iterators::Pair;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Ast {
-    RonFile(Vec<String>, Box<Ast>),
+    RonFile(BTreeSet<String>, Box<Ast>),
     Atom(String), // atomic types: bool, char, str, int, float, unit type
     Tuple(Vec<Ast>),
     List(Vec<Ast>),
@@ -75,6 +76,7 @@ impl<'a> From<Pair<'a, Rule>> for Ast {
             Rule::named_type_tuple => {
                 let mut iter = value.into_inner();
                 let (ident, tuple) = (iter.next().unwrap(), iter.next().unwrap());
+
                 match Ast::from(tuple) {
                     Ast::Tuple(inner) => Ast::NamedTypeTuple(ident.as_str().into(), inner),
                     _ => unreachable!(),
@@ -93,6 +95,7 @@ impl<'a> From<Pair<'a, Rule>> for Ast {
                         (field_name.as_str().into(), Ast::from(field_value))
                     })
                     .collect();
+
                 Ast::NamedTypeFields(ident.as_str().into(), fields)
             }
 
@@ -107,6 +110,7 @@ impl<'a> From<Pair<'a, Rule>> for Ast {
                         (field_name.as_str().into(), Ast::from(field_value))
                     })
                     .collect();
+
                 Ast::AnonymousTypeFields(fields)
             }
 

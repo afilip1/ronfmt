@@ -1,5 +1,6 @@
 use super::Ast;
 use std::fmt::{self, Display, Formatter};
+use itertools::Itertools;
 
 const TAB_SIZE: usize = 4;
 
@@ -23,10 +24,7 @@ impl Ast {
         match self {
             Ast::RonFile(extensions, value) => {
                 if !extensions.is_empty() {
-                    let mut sorted_exts = extensions.clone();
-                    sorted_exts.sort_unstable();
-
-                    writeln!(f, "#![enable({})]\n", sorted_exts.join(", "));
+                    writeln!(f, "#![enable({})]\n", extensions.iter().join(", "));
                 }
 
                 value.fmt_rec(f, 0, true);
