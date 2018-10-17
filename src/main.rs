@@ -16,5 +16,5 @@ fn main() {
         .next()
         .unwrap();
 
-    println!("{}", ast::Ast::from(ron));
+    println!("{}", ast::Node::from(ron));
 }
