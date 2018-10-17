@@ -27,14 +27,11 @@ impl<'a> From<Pair<'a, Rule>> for Node {
                 let mut iter = value.into_inner();
                 let extensions = iter
                     .take_while_ref(|item| item.as_rule() == Rule::extension)
-                    .map(|exts| {
-                        exts.into_inner()
-                            .map(|ext| ext.as_str().to_string())
-                            .collect()
-                    })
-                    .next()
-                    .unwrap_or_default();
+                    .flat_map(Pair::into_inner)
+                    .map(|ext_name| ext_name.as_str().into())
+                    .collect();
                 let ast = iter.next().map(Node::from).unwrap();
+
                 debug_assert!(iter.next().unwrap().as_rule() == Rule::EOI);
 
                 Node(0, Kind::RonFile(extensions, Box::new(ast)))
@@ -51,14 +48,20 @@ impl<'a> From<Pair<'a, Rule>> for Node {
             // collections
             Rule::tuple => {
                 let comma_separated_values = value.into_inner().next().unwrap();
-                let values = comma_separated_values.into_inner().map(Node::from).collect();
+                let values = comma_separated_values
+                    .into_inner()
+                    .map(Node::from)
+                    .collect();
 
                 Node(0, Kind::Tuple(values))
             }
 
             Rule::list => {
                 let comma_separated_values = value.into_inner().next().unwrap();
-                let values = comma_separated_values.into_inner().map(Node::from).collect();
+                let values = comma_separated_values
+                    .into_inner()
+                    .map(Node::from)
+                    .collect();
 
                 Node(0, Kind::List(values))
             }
@@ -86,7 +89,7 @@ impl<'a> From<Pair<'a, Rule>> for Node {
                 let (ident, tuple) = (iter.next().unwrap(), iter.next().unwrap());
 
                 if let Node(_, Kind::Tuple(inner)) = Node::from(tuple) {
-                    return Node(0, Kind::NamedTypeTuple(ident.as_str().into(), inner))
+                    return Node(0, Kind::NamedTypeTuple(ident.as_str().into(), inner));
                 }
 
                 unreachable!();

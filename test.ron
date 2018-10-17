@@ -1,4 +1,5 @@
 #![enable(b, a,)]
+#![enable(c)]
 (
   axes: // blah
    {

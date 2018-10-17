@@ -1,4 +1,4 @@
-use super::{Node, Kind};
+use super::{Kind, Node};
 use itertools::Itertools;
 use std::fmt::{self, Display, Formatter};
 
