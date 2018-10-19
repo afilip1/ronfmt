@@ -6,6 +6,16 @@ line_comment_inner = { (!NEWLINE ~ ANY)* }
 block_comment = { "/*" ~ (block_comment | block_comment_inner)  ~ "*/" }
 block_comment_inner = { (!"*/" ~ ANY)* }
 
+ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+ron_file = { SOI ~ extension* ~ value ~ EOI }
+extension = {
+    "#" ~ "!" ~ "[" ~ "enable" ~ "(" ~
+    ident ~ ("," ~ ident)* ~ ","? ~
+    ")" ~ "]"
+}
+value = { float | signed_int | bool | char | string | list | map | tuple_type | fields_type | unit_type }
+
 // booleans
 bool = { "true" | "false" }
 
@@ -27,41 +37,38 @@ char_inner = { "\\'" | (!"'" ~ ANY)* }
 
 // strings
 string = ${ string_std | string_raw }
+
 string_std = { "\"" ~ string_std_inner ~ "\"" }
 string_std_inner = { ("\\\"" | !"\"" ~ ANY)* }
-string_raw = {
-    "r" ~ PUSH("#"*) ~ "\"" ~
-    string_raw_inner ~
-    "\"" ~ POP
-}
+
+string_raw = { "r" ~ PUSH("#"*) ~ "\"" ~ string_raw_inner ~ "\"" ~ POP }
 string_raw_inner = { (!("\"" ~ PEEK) ~ ANY)* }
 
 // collections
-comma_separated_values = { value ~ ("," ~ value)* ~ ","? }
-list = { "[" ~ comma_separated_values? ~ "]" }
-tuple = { "(" ~ comma_separated_values? ~ ")" }
-
-map = { "{" ~ map_inner? ~ "}" }
-map_inner = { map_entry ~ ("," ~ map_entry)* ~ ","? }
-map_entry = { value ~ ":" ~ value }
-
-// types
-fields = { field ~ ("," ~ field)* ~ ","? }
-field = { ident ~ ":" ~ value }
-ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
-
-named_type = { anonymous_type_fields | named_type_fields | named_type_tuple | named_type_unit }
-anonymous_type_fields = { "(" ~ fields? ~ ")" }
-named_type_fields = { ident ~ "(" ~ fields? ~ ")" }
-named_type_tuple = { ident ~ tuple }
-named_type_unit = { ident }
-
-value = { float | signed_int | bool | char | string | tuple | list | map | named_type }
-
-extension = {
-    "#" ~ "!" ~ "[" ~ "enable" ~ "(" ~
-    ident ~ ("," ~ ident)* ~ ","? ~
-    ")" ~ "]"
+list = {
+    "[" ~
+    (value ~ ("," ~ value)* ~ ","?)? ~
+    "]"
 }
 
-ron_file = { SOI ~ extension* ~ value ~ EOI }
+map = {
+    "{" ~
+    (map_entry ~ ("," ~ map_entry)* ~ ","?)? ~
+    "}"
+}
+map_entry = { value ~ ":" ~ value }
+
+
+unit_type = { ident }
+tuple_type = {
+    ident? ~ "(" ~
+    (value ~ ("," ~ value)* ~ ","?)? ~
+    ")"
+}
+
+fields_type = {
+    ident? ~ "(" ~
+    (field ~ ("," ~ field)* ~ ","?)? ~
+    ")"
+}
+field = { ident ~ ":" ~ value }

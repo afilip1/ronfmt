@@ -10,7 +10,7 @@ fn indent(level: usize) -> String {
 
 impl Display for Node {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.fmt_rec(f, 0, true);
+        self.fmt_rec(f, 0, false);
         Ok(())
     }
 }
@@ -24,81 +24,66 @@ impl Node {
         match &self.1 {
             Kind::RonFile(extensions, value) => {
                 if !extensions.is_empty() {
-                    writeln!(f, "#![enable({})]\n", extensions.iter().join(", "));
+                    writeln!(f, "#![enable({})]", extensions.iter().join(", "));
                 }
 
-                value.fmt_rec(f, 0, true);
+                value.fmt_rec(f, 0, false);
             }
 
             Kind::Atom(atom) => {
                 write!(f, "{}", atom);
             }
 
-            Kind::Tuple(elements) => {
-                writeln!(f, "(");
-                for elem in elements {
-                    elem.fmt_rec(f, indent_level + 1, true);
-                    writeln!(f, ",");
-                }
-                write!(f, "{})", indent(indent_level));
-            }
-
             Kind::List(elements) => {
                 writeln!(f, "[");
+
                 for elem in elements {
                     elem.fmt_rec(f, indent_level + 1, true);
                     writeln!(f, ",");
                 }
+
                 write!(f, "{}]", indent(indent_level));
             }
 
             Kind::Map(entries) => {
                 writeln!(f, "{{");
+
                 for (key, value) in entries {
                     key.fmt_rec(f, indent_level + 1, true);
                     write!(f, ": ");
                     value.fmt_rec(f, indent_level + 1, false);
                     writeln!(f, ",");
                 }
+
                 write!(f, "{}}}", indent(indent_level));
             }
 
-            Kind::NamedTypeTuple(ident, elements) => {
-                writeln!(f, "{}(", ident);
+            Kind::TupleType(ident, elements) => {
+                if let Some(ident) = ident {
+                    write!(f, "{}", ident);
+                }
+                writeln!(f, "(");
+
                 for elem in elements {
                     elem.fmt_rec(f, indent_level + 1, true);
                     writeln!(f, ",");
                 }
+
                 write!(f, "{})", indent(indent_level));
             }
 
-            Kind::NamedTypeFields(ident, fields) => {
-                writeln!(f, "{}(", ident);
-                for (field_name, field_value) in fields {
-                    write!(
-                        f,
-                        "{indent}{}: ",
-                        field_name,
-                        indent = indent(indent_level + 1)
-                    );
-                    field_value.fmt_rec(f, indent_level + 1, false);
-                    writeln!(f, ",");
+            Kind::FieldsType(ident, fields) => {
+                if let Some(ident) = ident {
+                    write!(f, "{}", ident);
                 }
-                write!(f, "{})", indent(indent_level));
-            }
-
-            Kind::AnonymousTypeFields(fields) => {
                 writeln!(f, "(");
-                for (field_name, field_value) in fields {
-                    write!(
-                        f,
-                        "{indent}{}: ",
-                        field_name,
-                        indent = indent(indent_level + 1)
-                    );
-                    field_value.fmt_rec(f, indent_level + 1, false);
+
+                for (key, value) in fields {
+                    write!(f, "{indent}{}: ", key, indent = indent(indent_level + 1));
+                    value.fmt_rec(f, indent_level + 1, false);
                     writeln!(f, ",");
                 }
+
                 write!(f, "{})", indent(indent_level));
             }
         }
