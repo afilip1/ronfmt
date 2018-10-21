@@ -6,11 +6,13 @@ use pest::iterators::Pair;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+pub struct RonFile(BTreeSet<String>, Box<Node>);
+
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Node(usize, Kind);
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Kind {
-    RonFile(BTreeSet<String>, Box<Node>),
     Atom(String), // atomic types: bool, char, str, int, float, unit type
     List(Vec<Node>),
     Map(Vec<(Node, Node)>),
@@ -18,23 +20,29 @@ pub enum Kind {
     FieldsType(Option<String>, Vec<(String, Node)>),
 }
 
-impl<'a> From<Pair<'a, Rule>> for Node {
+impl RonFile {
+    pub fn try_parse_from(pair: Pair<Rule>) -> Result<RonFile, ()> {
+        if pair.as_rule() != Rule::ron_file {
+            return Err(());
+        }
+
+        let mut iter = pair.into_inner();
+        let extensions = iter
+            .take_while_ref(|item| item.as_rule() == Rule::extension)
+            .flat_map(Pair::into_inner)
+            .map(|ext_name| ext_name.as_str().into())
+            .collect();
+        let value = iter.next().map(Node::from).unwrap();
+
+        debug_assert!(iter.next().unwrap().as_rule() == Rule::EOI);
+
+        Ok(RonFile(extensions, Box::new(value)))
+    }
+}
+
+impl Node {
     fn from(pair: Pair<Rule>) -> Node {
         match pair.as_rule() {
-            Rule::ron_file => {
-                let mut iter = pair.into_inner();
-                let extensions = iter
-                    .take_while_ref(|item| item.as_rule() == Rule::extension)
-                    .flat_map(Pair::into_inner)
-                    .map(|ext_name| ext_name.as_str().into())
-                    .collect();
-                let value = iter.next().map(Node::from).unwrap();
-
-                debug_assert!(iter.next().unwrap().as_rule() == Rule::EOI);
-
-                Node(0, Kind::RonFile(extensions, Box::new(value)))
-            }
-
             // atomics
             Rule::bool
             | Rule::char
@@ -113,6 +121,7 @@ impl<'a> From<Pair<'a, Rule>> for Node {
 
             // intermediates and aggregates
             Rule::value => Node::from(pair.into_inner().next().unwrap()),
+            Rule::ron_file => *RonFile::try_parse_from(pair).unwrap().1,
 
             // handled in other rules
             _ => unreachable!(),

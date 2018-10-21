@@ -1,12 +1,24 @@
-use super::{Kind, Node};
+use super::{Kind, Node, RonFile};
 use itertools::Itertools;
-use std::fmt::{self, Display, Formatter, Write};
+use std::fmt::{self, Display, Formatter};
 
 const TAB_SIZE: usize = 4;
 const MAX_LINE_WIDTH: usize = 40;
 
 fn indent(level: usize) -> String {
     " ".repeat(TAB_SIZE * level)
+}
+
+impl Display for RonFile {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let RonFile(extensions, value) = self;
+        if !extensions.is_empty() {
+            writeln!(f, "#![enable({})]", extensions.iter().join(", "));
+        }
+
+        value.fmt_rec(f, 0, false);
+        Ok(())
+    }
 }
 
 impl Display for Node {
@@ -17,28 +29,20 @@ impl Display for Node {
 }
 
 impl Node {
-    fn fmt_rec(&self, f: &mut dyn Write, indent_level: usize, indent_first_line: bool) {
+    fn fmt_rec(&self, f: &mut Formatter, indent_level: usize, indent_first_line: bool) {
         if indent_first_line {
             write!(f, "{}", indent(indent_level));
         }
 
-        if self.0 + TAB_SIZE * indent_level > MAX_LINE_WIDTH {
+        if TAB_SIZE * indent_level + self.0 > MAX_LINE_WIDTH {
             self.fmt_multiline(f, indent_level);
         } else {
-            write!(f, "{}", self.fmt_singleline());
-        };
+            write!(f, "{}", self.fmt_single_line());
+        }
     }
 
-    fn fmt_multiline(&self, f: &mut dyn Write, indent_level: usize) {
+    fn fmt_multiline(&self, f: &mut Formatter, indent_level: usize) {
         match &self.1 {
-            Kind::RonFile(extensions, value) => {
-                if !extensions.is_empty() {
-                    writeln!(f, "#![enable({})]", extensions.iter().join(", "));
-                }
-
-                value.fmt_rec(f, 0, false);
-            }
-
             Kind::Atom(atom) => {
                 write!(f, "{}", atom);
             }
@@ -98,20 +102,8 @@ impl Node {
         }
     }
 
-    fn fmt_singleline(&self) -> String {
+    fn fmt_single_line(&self) -> String {
         match &self.1 {
-            Kind::RonFile(extensions, value) => {
-                if !extensions.is_empty() {
-                    let mut buf = format!("#![enable({})]\n", extensions.iter().join(", "));
-                    value.fmt_rec(&mut buf, 0, false);
-                    buf
-                } else {
-                    let mut buf = String::new();
-                    value.fmt_rec(&mut buf, 0, false);
-                    buf
-                }
-            }
-
             Kind::Atom(atom) => atom.clone(),
 
             Kind::List(elements) => format!("[{}]", elements.iter().join(", ")),
@@ -120,37 +112,22 @@ impl Node {
                 "{{{}}}",
                 entries
                     .iter()
-                    .map(|(k, v)| format!("{}: {}", k.fmt_singleline(), v.fmt_singleline()))
+                    .map(|(k, v)| format!("{}: {}", k.fmt_single_line(), v.fmt_single_line()))
                     .join(", ")
             ),
 
             Kind::TupleType(ident, elements) => {
-                if let Some(ident) = ident {
-                    format!("{}({})", ident, elements.iter().join(", "))
-                } else {
-                    format!("({})", elements.iter().join(", "))
-                }
+                let ident = ident.clone().unwrap_or_default();
+                format!("{}({})", ident, elements.iter().join(", "))
             }
 
             Kind::FieldsType(ident, fields) => {
-                if let Some(ident) = ident {
-                    format!(
-                        "{}({})",
-                        ident,
-                        fields
-                            .iter()
-                            .map(|(k, v)| format!("{}: {}", k, v.fmt_singleline()))
-                            .join(", ")
-                    )
-                } else {
-                    format!(
-                        "({})",
-                        fields
-                            .iter()
-                            .map(|(k, v)| format!("{}: {}", k, v.fmt_singleline()))
-                            .join(", ")
-                    )
-                }
+                let ident = ident.clone().unwrap_or_default();
+                let fields = fields
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", k, v.fmt_single_line()))
+                    .join(", ");
+                format!("{}({})", ident, fields)
             }
         }
     }
