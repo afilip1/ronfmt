@@ -5,25 +5,22 @@ use itertools::Itertools;
 use pest::iterators::Pair;
 use std::collections::BTreeSet;
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
-pub struct RonFile(BTreeSet<String>, Box<Node>);
+pub struct RonFile(BTreeSet<String>, Box<Value>);
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
-pub struct Node(usize, Kind);
+pub struct Value(usize, Kind);
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Kind {
     Atom(String), // atomic types: bool, char, str, int, float, unit type
-    List(Vec<Node>),
-    Map(Vec<(Node, Node)>),
-    TupleType(Option<String>, Vec<Node>),
-    FieldsType(Option<String>, Vec<(String, Node)>),
+    List(Vec<Value>),
+    Map(Vec<(Value, Value)>),
+    TupleType(Option<String>, Vec<Value>),
+    FieldsType(Option<String>, Vec<(String, Value)>),
 }
 
 impl RonFile {
-    pub fn try_parse_from(pair: Pair<Rule>) -> Result<RonFile, ()> {
+    pub fn parse_from(pair: Pair<Rule>) -> RonFile {
         if pair.as_rule() != Rule::ron_file {
-            return Err(());
+            panic!("expected ron_file pair");
         }
 
         let mut iter = pair.into_inner();
@@ -32,36 +29,32 @@ impl RonFile {
             .flat_map(Pair::into_inner)
             .map(|ext_name| ext_name.as_str().into())
             .collect();
-        let value = iter.next().map(Node::from).unwrap();
+        let value = iter.next().map(Value::from).unwrap();
 
         debug_assert!(iter.next().unwrap().as_rule() == Rule::EOI);
 
-        Ok(RonFile(extensions, Box::new(value)))
+        RonFile(extensions, Box::new(value))
     }
 }
 
-impl Node {
-    fn from(pair: Pair<Rule>) -> Node {
+impl Value {
+    fn from(pair: Pair<Rule>) -> Value {
         match pair.as_rule() {
-            // atomics
             Rule::bool
             | Rule::char
             | Rule::string
             | Rule::signed_int
             | Rule::float
             | Rule::unit_type => {
-                let atom = pair.as_str().to_string();
-                Node(atom.len(), Kind::Atom(atom))
+                let a = pair.as_str().to_string();
+                Value(a.len(), Kind::Atom(a))
             }
 
-            // collections
             Rule::list => {
-                let values: Vec<_> = pair.into_inner().map(Node::from).collect();
+                let values: Vec<_> = pair.into_inner().map(Value::from).collect();
+                let len = values.iter().map(|n| n.0 + 2).sum(); // N elements -> N-1 ", " + "[]" -> +2 chars per element
 
-                // N elements -> N-1 ", " + "[]" -> +2 chars per element
-                let len = values.iter().map(|n| n.0 + 2).sum();
-
-                Node(len, Kind::List(values))
+                Value(len, Kind::List(values))
             }
 
             Rule::map => {
@@ -69,15 +62,13 @@ impl Node {
                     .into_inner()
                     .map(|entry| {
                         let mut kv_iter = entry.into_inner();
-                        let (key, value) = (kv_iter.next().unwrap(), kv_iter.next().unwrap());
-                        (Node::from(key), Node::from(value))
+                        let (k, v) = (kv_iter.next().unwrap(), kv_iter.next().unwrap());
+                        (Value::from(k), Value::from(v))
                     })
                     .collect();
+                let len = entries.iter().map(|(k, v)| k.0 + v.0 + 4).sum(); // N entries -> N ": " + N-1 ", " + "{}" -> +4 chars per entry
 
-                // N entries -> N ": " + N-1 ", " + "{}" -> +4 chars per entry
-                let len = entries.iter().map(|(k, v)| k.0 + v.0 + 4).sum();
-
-                Node(len, Kind::Map(entries))
+                Value(len, Kind::Map(entries))
             }
 
             Rule::tuple_type => {
@@ -87,13 +78,11 @@ impl Node {
                     _ => None,
                 };
 
-                let values: Vec<_> = iter.map(Node::from).collect();
+                let values: Vec<_> = iter.map(Value::from).collect();
+                let len = ident.as_ref().map_or(0, |i| i.len())
+                    + values.iter().map(|n| n.0 + 2).sum::<usize>(); // N elements -> N-1 ", " + "()" -> +2 chars per element
 
-                // N elements -> N-1 ", " + "()" -> +2 chars per element
-                let len = values.iter().map(|n| n.0 + 2).sum::<usize>()
-                    + ident.as_ref().map_or(0, |i| i.len());
-
-                Node(len, Kind::TupleType(ident, values))
+                Value(len, Kind::TupleType(ident, values))
             }
 
             Rule::fields_type => {
@@ -105,23 +94,18 @@ impl Node {
 
                 let fields: Vec<_> = iter
                     .map(|field| {
-                        let mut field_iter = field.into_inner();
-                        let (field_name, field_value) =
-                            (field_iter.next().unwrap(), field_iter.next().unwrap());
-                        (field_name.as_str().to_string(), Node::from(field_value))
+                        let mut kv_iter = field.into_inner();
+                        let (k, v) = (kv_iter.next().unwrap(), kv_iter.next().unwrap());
+                        (k.as_str().to_string(), Value::from(v))
                     })
                     .collect();
+                let len = ident.as_ref().map_or(0, |i| i.len())
+                    + fields.iter().map(|(k, v)| k.len() + v.0 + 4).sum::<usize>(); // N fields -> N ": " + N-1 ", " + "()" -> +4 chars per field
 
-                // N entries -> N ": " + N-1 ", " + "()" -> +4 chars per entry
-                let len: usize = fields.iter().map(|(k, v)| k.len() + v.0 + 4).sum::<usize>()
-                    + ident.as_ref().map_or(0, |i| i.len());
-
-                Node(len, Kind::FieldsType(ident, fields))
+                Value(len, Kind::FieldsType(ident, fields))
             }
 
-            // intermediates and aggregates
-            Rule::value => Node::from(pair.into_inner().next().unwrap()),
-            Rule::ron_file => *RonFile::try_parse_from(pair).unwrap().1,
+            Rule::value => Value::from(pair.into_inner().next().unwrap()),
 
             // handled in other rules
             _ => unreachable!(),

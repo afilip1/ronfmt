@@ -24,9 +24,6 @@ fn main() {
         .next()
         .unwrap();
 
-    std::fs::write(
-        &target_path,
-        format!("{}", ast::RonFile::try_parse_from(ron).unwrap()),
-    )
-    .expect("unable to overwrite target file");
+    std::fs::write(&target_path, format!("{}", ast::RonFile::parse_from(ron)))
+        .expect("unable to overwrite target file");
 }
