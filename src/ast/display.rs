@@ -1,9 +1,7 @@
 use super::*;
+use crate::{TAB_SIZE, MAX_LINE_WIDTH};
 use itertools::Itertools;
 use std::fmt::{self, Display, Formatter};
-
-const TAB_SIZE: usize = 4;
-const MAX_LINE_WIDTH: usize = 40;
 
 impl Display for RonFile {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -17,12 +15,12 @@ impl Display for RonFile {
 }
 
 fn space(level: usize) -> String {
-    " ".repeat(TAB_SIZE * level)
+    " ".repeat(unsafe { TAB_SIZE } * level)
 }
 
 impl Value {
     fn to_string_rec(&self, tabs: usize) -> String {
-        if tabs * TAB_SIZE + self.0 > MAX_LINE_WIDTH {
+        if tabs * unsafe { TAB_SIZE } + self.0 > unsafe { MAX_LINE_WIDTH } {
             self.multiline(tabs)
         } else {
             self.single_line()
