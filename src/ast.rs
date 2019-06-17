@@ -73,8 +73,8 @@ impl Value {
 
             Rule::tuple_type => {
                 let mut iter = pair.into_inner().peekable();
-                let ident = match iter.peek().unwrap().as_rule() {
-                    Rule::ident => Some(iter.next().unwrap().as_str().to_string()),
+                let ident = match iter.peek().map(|p| p.as_rule()) {
+                    Some(Rule::ident) => Some(iter.next().unwrap().as_str().to_string()),
                     _ => None,
                 };
 
