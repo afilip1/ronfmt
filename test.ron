@@ -2,10 +2,11 @@
 #![enable(c)]
 (           axes:{
         "left_paddle": Emulated(
-            pos: Key(W
+            pos: Key(/* middle comment */W
             ),neg:
  Key(S),
         ),
+        // line-comment
 
 "right_paddle":    Emulated(
             pos         :
@@ -16,6 +17,9 @@
                     ),
     }
     ,
+    /* multi
+    line
+    comment */
 
     actions: {
 

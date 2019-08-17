@@ -52,5 +52,6 @@ fn matches<'a>() -> clap::ArgMatches<'a> {
         (@arg MAX_LINE_WIDTH: -w +takes_value "Sets soft max line width for formatting heuristics")
         (@arg TAB_SIZE: -t +takes_value "Sets indentation size in spaces")
         (@arg debug: -d "Prints output to console instead of overwriting the input file")
-    ).get_matches()
+    )
+    .get_matches()
 }
