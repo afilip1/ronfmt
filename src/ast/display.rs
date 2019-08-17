@@ -1,5 +1,5 @@
 use super::*;
-use crate::{TAB_SIZE, MAX_LINE_WIDTH};
+use crate::{MAX_LINE_WIDTH, TAB_SIZE};
 use itertools::Itertools;
 use std::fmt::{self, Display, Formatter};
 
@@ -16,6 +16,67 @@ impl Display for RonFile {
 
 fn space(level: usize) -> String {
     " ".repeat(unsafe { TAB_SIZE } * level)
+}
+
+impl Commented {
+    fn pre_string_single(&self) -> String {
+        match &self.pre {
+            None => "".into(),
+            Some(v) => v.clone().into_iter().collect::<String>(),
+        }
+    }
+    fn post_string(&self) -> String {
+        match &self.post {
+            None => "".into(),
+            Some(v) => v.clone().into_iter().collect::<String>(),
+        }
+    }
+    fn pre_string(&self) -> String {
+        match &self.pre {
+            None => "".into(),
+            Some(v) => v.clone().into_iter().collect::<String>(),
+        }
+    }
+    fn post_string_single(&self) -> String {
+        match &self.post {
+            None => "".into(),
+            Some(v) => v.clone().into_iter().collect::<String>(),
+        }
+    }
+    fn to_string_rec(&self, tabs: usize) -> String {
+        // format!(
+        //     "--{}{}{}--",
+        //     self.pre_string(),
+        //     self.value.multiline(tabs),
+        //     self.post_string()
+        // )
+        match (&self.pre, &self.post, &self.eol) {
+            (Some(_), _, _) | (_, Some(_), _) | (_, _, Some(_)) => format!(
+                "--{}{}{}--",
+                self.pre_string(),
+                self.value.multiline(tabs),
+                self.post_string()
+            ),
+            _ => self.value.to_string_rec(tabs),
+        }
+    }
+    fn single_line(&self) -> String {
+        // format!(
+        //     "--{}{}{}--",
+        //     self.pre_string_single(),
+        //     self.value.single_line(),
+        //     self.post_string_single()
+        // )
+        match (&self.pre, &self.post, &self.eol) {
+            (Some(_), _, _) | (_, Some(_), _) | (_, _, Some(_)) => format!(
+                "--{}{}{}--",
+                self.pre_string_single(),
+                self.value.single_line(),
+                self.post_string_single()
+            ),
+            _ => self.value.single_line(),
+        }
+    }
 }
 
 impl Value {
@@ -45,9 +106,11 @@ impl Value {
                     .iter()
                     .map(|(k, v)| {
                         format!(
-                            "{}: {},\n",
+                            "{}{}: {},{}\n",
+                            v.pre_string(),
                             space(tabs + 1) + &k.to_string_rec(tabs + 1),
-                            v.to_string_rec(tabs + 1)
+                            v.value.to_string_rec(tabs + 1),
+                            v.post_string(),
                         )
                     })
                     .collect::<String>();
@@ -70,7 +133,13 @@ impl Value {
                 let fields = fields
                     .iter()
                     .map(|(k, v)| {
-                        format!("{}: {},\n", space(tabs + 1) + &k, v.to_string_rec(tabs + 1))
+                        format!(
+                            "{}{}: {},{}\n",
+                            v.pre_string(),
+                            space(tabs + 1) + &k,
+                            v.value.to_string_rec(tabs + 1),
+                            v.post_string()
+                        )
                     })
                     .collect::<String>();
 
