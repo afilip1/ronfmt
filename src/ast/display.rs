@@ -66,24 +66,18 @@ impl Commented {
     }
 
     fn to_string_rec(&self, tabs: usize) -> String {
-        match (&self.pre, &self.post, &self.eol) {
-            (Some(_), _, _) | (_, Some(_), _) | (_, _, Some(_)) => format!(
-                "{}{}{}",
-                self.pre_string(tabs),
-                self.value.multiline(tabs),
-                self.post_string(tabs)
-            ),
+        match (&self.pre, &self.post) {
+            (Some(_), _) | (_, Some(_)) => {
+                self.pre_string(tabs) + &self.value.multiline(tabs) + &self.post_string(tabs)
+            }
             _ => self.value.to_string_rec(tabs),
         }
     }
     fn single_line(&self) -> String {
-        match (&self.pre, &self.post, &self.eol) {
-            (Some(_), _, _) | (_, Some(_), _) | (_, _, Some(_)) => format!(
-                "{}{}{}",
-                self.pre_string_single(),
-                self.value.single_line(),
-                self.post_string_single()
-            ),
+        match (&self.pre, &self.post) {
+            (Some(_), _) | (_, Some(_)) => {
+                self.pre_string_single() + &self.value.single_line() + &self.post_string_single()
+            }
             _ => self.value.single_line(),
         }
     }

@@ -11,7 +11,6 @@ pub struct Value(usize, Kind, bool);
 
 pub struct Commented {
     value: Value,
-    eol: Option<String>,
     pre: Option<Vec<String>>,
     post: Option<Vec<String>>,
 }
@@ -33,8 +32,6 @@ pub enum Kind {
     Atom(String), // atomic types: bool, char, str, int, float, unit type
     List(Vec<Commented>),
     Map(Vec<(Value, Commented)>),
-    // LineComment(String),
-    // BlockComment(String),
     TupleType(Option<String>, Vec<Commented>),
     FieldsType(Option<String>, Vec<(String, Commented)>),
 }
@@ -92,7 +89,6 @@ impl Commented {
                     let c = Commented {
                         value: v,
                         pre: emptynull(pre),
-                        eol: None,
                         post: None,
                     };
                     pre = vec![];
@@ -120,7 +116,6 @@ impl Commented {
 
         let mut pre = vec![];
         let mut last = None;
-        // let mut key = None;
 
         for pair in pairs {
             match pair.as_rule() {
@@ -155,7 +150,6 @@ impl Commented {
                     let c = Commented {
                         value: v,
                         pre: emptynull(pre),
-                        eol: None,
                         post: None,
                     };
                     last = Some((k.unwrap(), c));
@@ -215,7 +209,6 @@ impl Commented {
                     let c = Commented {
                         value: v,
                         pre: emptynull(pre),
-                        eol: None,
                         post: None,
                     };
                     last = Some((k.unwrap(), c));
@@ -252,17 +245,12 @@ impl Value {
             | Rule::float
             | Rule::unit_type => {
                 let a = pair.as_str().to_string();
-                // let ident = match iter.peek().map(|p| p.as_rule()) {
-                //     Some(Rule::COMMENT) => Some(iter.next().unwrap().as_str().to_string()),
-                //     _ => None,
-                // };
                 let multiline = a.contains("\n");
                 Value(a.len(), Kind::Atom(a), multiline)
             }
 
             Rule::list => {
                 let values: Vec<_> = Commented::from(pair.into_inner());
-                // .map(Value::from).collect();
                 let len = values.iter().map(|n| n.0 + 2).sum(); // N elements -> N-1 ", " + "[]" -> +2 chars per element
                 let multiline = values.iter().any(|v| v.2);
 
@@ -271,12 +259,6 @@ impl Value {
 
             Rule::map => {
                 let entries: Vec<_> = Commented::keyed(pair.into_inner());
-                // .map(|entry| {
-                //     let mut kv_iter = entry.into_inner();
-                //     let (k, v) = (kv_iter.next().unwrap(), kv_iter.next().unwrap());
-                //     (Value::from(k), Value::from(v))
-                // })
-                // .collect();
                 let len = entries.iter().map(|(k, v)| k.0 + v.0 + 4).sum(); // N entries -> N ": " + N-1 ", " + "{}" -> +4 chars per entry
                 let multiline = entries.iter().any(|(_, v)| v.2);
 
@@ -306,12 +288,6 @@ impl Value {
                 };
 
                 let fields: Vec<_> = Commented::str_keyed(iter);
-                // .map(|field| {
-                //     let mut kv_iter = field.into_inner();
-                //     let (k, v) = (kv_iter.next().unwrap(), kv_iter.next().unwrap());
-                //     (k.as_str().to_string(), Value::from(v))
-                // })
-                // .collect();
                 let len = ident.as_ref().map_or(0, |i| i.len())
                     + fields.iter().map(|(k, v)| k.len() + v.0 + 4).sum::<usize>(); // N fields -> N ": " + N-1 ", " + "()" -> +4 chars per field
                 let multiline = fields.iter().any(|(_, v)| v.2);
@@ -321,21 +297,8 @@ impl Value {
 
             Rule::value => Value::from(pair.into_inner().next().unwrap()),
 
-            // Rule::COMMENT => {
-            //     let a = pair.as_str().to_string();
-            //     Value(a.len(), Kind::BlockComment(a))
-            // }
-
             // handled in other rules
-            _ => {
-                let a = pair.as_str().to_string();
-                println!("{}", a);
-                // let ident = match iter.peek().map(|p| p.as_rule()) {
-                //     Some(Rule::COMMENT) => Some(iter.next().unwrap().as_str().to_string()),
-                //     _ => None,
-                // };
-                panic!("Unreachacle")
-            } // _ => unreachable!(),
+            _ => panic!("Unreachacle"),
         }
     }
 }
