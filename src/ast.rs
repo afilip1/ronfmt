@@ -240,8 +240,6 @@ impl Value {
             | Rule::string
             | Rule::signed_int
             | Rule::COMMENT
-            | Rule::line_comment
-            | Rule::block_comment
             | Rule::float
             | Rule::unit_type => {
                 let a = pair.as_str().to_string();
