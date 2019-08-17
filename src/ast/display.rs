@@ -77,12 +77,6 @@ impl Commented {
         }
     }
     fn single_line(&self) -> String {
-        // format!(
-        //     "--{}{}{}--",
-        //     self.pre_string_single(),
-        //     self.value.single_line(),
-        //     self.post_string_single()
-        // )
         match (&self.pre, &self.post, &self.eol) {
             (Some(_), _, _) | (_, Some(_), _) | (_, _, Some(_)) => format!(
                 "{}{}{}",
