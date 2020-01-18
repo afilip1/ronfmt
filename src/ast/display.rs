@@ -1,116 +1,205 @@
-use super::*;
-use crate::{TAB_SIZE, MAX_LINE_WIDTH};
+use crate::ast::{FileText, RonValue, TextFragment};
+use crate::config;
 use itertools::Itertools;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::Write;
 
-impl Display for RonFile {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let RonFile(extensions, value) = self;
-        if !extensions.is_empty() {
-            writeln!(f, "#![enable({})]", extensions.iter().join(", "));
+impl FileText {
+    pub fn pretty_print(&self, config: &config::Config) -> String {
+        let mut output = String::new();
+
+        if !self.extensions.is_empty() {
+            self.write_extensions(&mut output);
         }
+        self.write_ron_value(&mut output, config);
 
-        write!(f, "{}", value.to_string_rec(0))
+        output
+    }
+
+    fn write_extensions(&self, output: &mut dyn Write) {
+        let extensions_inner = self.extensions.iter().join(", ");
+
+        writeln!(output, "#![enable({})]", extensions_inner)
+            .expect("unable to write extensions");
+    }
+
+    fn write_ron_value(&self, output: &mut dyn Write, config: &config::Config) {
+        writeln!(output, "{}", self.ron_text.format(config))
+            .expect("unable to write formatted RON output");
     }
 }
 
-fn space(level: usize) -> String {
-    " ".repeat(unsafe { TAB_SIZE } * level)
-}
+impl TextFragment {
+    fn format(&self, config: &config::Config) -> String {
+        self.format_rec(0, config)
+    }
 
-impl Value {
-    fn to_string_rec(&self, tabs: usize) -> String {
-        if tabs * unsafe { TAB_SIZE } + self.0 > unsafe { MAX_LINE_WIDTH } {
-            self.multiline(tabs)
+    fn format_rec(&self, indent_level: usize, config: &config::Config) -> String {
+        let projected_width =
+            indent_level * config.soft_tab_width + self.minimum_length;
+
+        if projected_width > config.max_line_width {
+            self.to_multiline(indent_level, config)
         } else {
-            self.single_line()
+            self.to_single_line()
         }
     }
 
-    fn multiline(&self, tabs: usize) -> String {
-        match &self.1 {
-            Kind::Atom(atom) => atom.clone(),
+    fn to_multiline(&self, indent_level: usize, config: &config::Config) -> String {
+        fn indent(level: usize, config: &config::Config) -> String {
+            " ".repeat(config.soft_tab_width * level)
+        }
 
-            Kind::List(values) => {
-                let elements = values
+        match &self.ron_value {
+            RonValue::Atom(value) => value.clone(),
+
+            RonValue::List(elements) => {
+                let list_inner = elements
                     .iter()
-                    .map(|e| space(tabs + 1) + &e.to_string_rec(tabs + 1) + ",\n")
-                    .collect::<String>();
-
-                format!("[\n{}{}]", elements, space(tabs))
-            }
-
-            Kind::Map(entries) => {
-                let entries = entries
-                    .iter()
-                    .map(|(k, v)| {
+                    .map(|elem| {
                         format!(
-                            "{}: {},\n",
-                            space(tabs + 1) + &k.to_string_rec(tabs + 1),
-                            v.to_string_rec(tabs + 1)
+                            "{indent}{elem},\n",
+                            indent = indent(indent_level + 1, config),
+                            elem = elem.format_rec(indent_level + 1, config)
                         )
                     })
                     .collect::<String>();
 
-                format!("{{\n{}{}}}", entries, space(tabs))
+                format!(
+                    "[\n{list_inner}{indent}]",
+                    list_inner = list_inner,
+                    indent = indent(indent_level, config)
+                )
             }
 
-            Kind::TupleType(ident, values) => {
-                let ident = ident.clone().unwrap_or_default();
-                let elements = values
+            RonValue::Map(entries) => {
+                let map_inner = entries
                     .iter()
-                    .map(|e| space(tabs + 1) + &e.to_string_rec(tabs + 1) + ",\n")
-                    .collect::<String>();
-
-                format!("{}(\n{}{})", ident, elements, space(tabs))
-            }
-
-            Kind::FieldsType(ident, fields) => {
-                let ident = ident.clone().unwrap_or_default();
-                let fields = fields
-                    .iter()
-                    .map(|(k, v)| {
-                        format!("{}: {},\n", space(tabs + 1) + &k, v.to_string_rec(tabs + 1))
+                    .map(|(key, val)| {
+                        format!(
+                            "{indent}{key}: {val},\n",
+                            indent = indent(indent_level + 1, config),
+                            key = key.format_rec(indent_level + 1, config),
+                            val = val.format_rec(indent_level + 1, config)
+                        )
                     })
                     .collect::<String>();
 
-                format!("{}(\n{}{})", ident, fields, space(tabs))
+                format!(
+                    "{{\n{map_inner}{indent}}}",
+                    map_inner = map_inner,
+                    indent = indent(indent_level, config)
+                )
+            }
+
+            RonValue::TupleType {
+                maybe_ident,
+                elements,
+            } => {
+                let ident = maybe_ident.clone().unwrap_or_default();
+                let tuple_inner = elements
+                    .iter()
+                    .map(|elem| {
+                        format!(
+                            "{indent}{elem},\n",
+                            indent = indent(indent_level + 1, config),
+                            elem = elem.format_rec(indent_level + 1, config)
+                        )
+                    })
+                    .collect::<String>();
+
+                format!(
+                    "{ident}(\n{tuple_inner}{indent})",
+                    ident = ident,
+                    tuple_inner = tuple_inner,
+                    indent = indent(indent_level, config)
+                )
+            }
+
+            RonValue::FieldsType {
+                maybe_ident,
+                fields,
+            } => {
+                let ident = maybe_ident.clone().unwrap_or_default();
+                let fields_inner = fields
+                    .iter()
+                    .map(|(key, val)| {
+                        format!(
+                            "{indent}{key}: {val},\n",
+                            indent = indent(indent_level + 1, config),
+                            key = key,
+                            val = val.format_rec(indent_level + 1, config)
+                        )
+                    })
+                    .collect::<String>();
+
+                format!(
+                    "{ident}(\n{fields_inner}{indent})",
+                    ident = ident,
+                    fields_inner = fields_inner,
+                    indent = indent(indent_level, config)
+                )
             }
         }
     }
 
-    fn single_line(&self) -> String {
-        match &self.1 {
-            Kind::Atom(atom) => atom.clone(),
+    fn to_single_line(&self) -> String {
+        match &self.ron_value {
+            RonValue::Atom(value) => value.clone(),
 
-            Kind::List(elements) => {
-                format!("[{}]", elements.iter().map(|e| e.single_line()).join(", "))
+            RonValue::List(elements) => {
+                let list_inner =
+                    elements.iter().map(|e| e.to_single_line()).join(", ");
+
+                format!("[{}]", list_inner)
             }
 
-            Kind::Map(entries) => format!(
-                "{{{}}}",
-                entries
+            RonValue::Map(entries) => {
+                let map_inner = entries
                     .iter()
-                    .map(|(k, v)| format!("{}: {}", k.single_line(), v.single_line()))
-                    .join(", ")
-            ),
+                    .map(|(key, val)| {
+                        format!(
+                            "{key}: {val}",
+                            key = key.to_single_line(),
+                            val = val.to_single_line()
+                        )
+                    })
+                    .join(", ");
 
-            Kind::TupleType(ident, elements) => {
-                let ident = ident.clone().unwrap_or_default();
+                format!("{{{}}}", map_inner)
+            }
+
+            RonValue::TupleType {
+                maybe_ident,
+                elements,
+            } => {
+                let ident = maybe_ident.clone().unwrap_or_default();
+                let tuple_inner =
+                    elements.iter().map(|e| e.to_single_line()).join(", ");
+
                 format!(
-                    "{}({})",
-                    ident,
-                    elements.iter().map(|e| e.single_line()).join(", ")
+                    "{ident}({tuple_inner})",
+                    ident = ident,
+                    tuple_inner = tuple_inner
                 )
             }
 
-            Kind::FieldsType(ident, fields) => {
-                let ident = ident.clone().unwrap_or_default();
+            RonValue::FieldsType {
+                maybe_ident,
+                fields,
+            } => {
+                let ident = maybe_ident.clone().unwrap_or_default();
                 let fields = fields
                     .iter()
-                    .map(|(k, v)| format!("{}: {}", k, v.single_line()))
+                    .map(|(key, val)| {
+                        format!(
+                            "{key}: {val}",
+                            key = key,
+                            val = val.to_single_line()
+                        )
+                    })
                     .join(", ");
-                format!("{}({})", ident, fields)
+
+                format!("{ident}({fields})", ident = ident, fields = fields)
             }
         }
     }
