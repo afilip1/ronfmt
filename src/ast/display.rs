@@ -33,7 +33,11 @@ impl TextFragment {
         self.format_rec(0, config)
     }
 
-    fn format_rec(&self, indent_level: usize, config: &config::Config) -> String {
+    fn format_rec(
+        &self,
+        indent_level: usize,
+        config: &config::Config,
+    ) -> String {
         let projected_width =
             indent_level * config.soft_tab_width + self.minimum_length;
 
@@ -44,7 +48,11 @@ impl TextFragment {
         }
     }
 
-    fn to_multiline(&self, indent_level: usize, config: &config::Config) -> String {
+    fn to_multiline(
+        &self,
+        indent_level: usize,
+        config: &config::Config,
+    ) -> String {
         fn indent(level: usize, config: &config::Config) -> String {
             " ".repeat(config.soft_tab_width * level)
         }

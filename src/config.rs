@@ -9,40 +9,37 @@ pub struct Config {
 }
 
 impl Config {
-    fn new(target_file_path: &str) -> Config {
-        Config {
-            target_file_path: target_file_path.to_string(),
-            soft_tab_width: 4,
-            max_line_width: 40,
-            format_in_place: false,
-            with_backup: true,
-        }
-    }
+    const SOFT_TAB_WIDTH: usize = 4;
+    const MAX_LINE_WIDTH: usize = 40;
 }
+
 
 pub fn get_config() -> Config {
     let matches = get_clap_matches();
 
-    let target_file_path = matches.value_of("INPUT").unwrap();
-    let mut config = Config::new(target_file_path);
+    let target_file_path = matches.value_of("INPUT").unwrap().to_string();
 
-    if let Some(max_line_width) = matches.value_of("MAX_LINE_WIDTH") {
-        config.max_line_width = str::parse(max_line_width).unwrap();
+    let soft_tab_width = matches
+        .value_of("TAB_SIZE")
+        .map(|stw| stw.parse().expect("invalid tab size"))
+        .unwrap_or(Config::SOFT_TAB_WIDTH);
+
+    let max_line_width = matches
+        .value_of("MAX_LINE_WIDTH")
+        .map(|mlw| mlw.parse().expect("invalid line width"))
+        .unwrap_or(Config::MAX_LINE_WIDTH);
+
+    let format_in_place = matches.is_present("inplace");
+
+    let with_backup = !matches.is_present("nobackup");
+
+    Config {
+        target_file_path,
+        soft_tab_width,
+        max_line_width,
+        format_in_place,
+        with_backup,
     }
-
-    if let Some(soft_tab_width) = matches.value_of("TAB_SIZE") {
-        config.soft_tab_width = str::parse(soft_tab_width).unwrap();
-    }
-
-    if matches.is_present("inplace") {
-        config.format_in_place = true;
-
-        if matches.is_present("nobackup") {
-            config.with_backup = false;
-        }
-    }
-
-    config
 }
 
 fn get_clap_matches<'a>() -> clap::ArgMatches<'a> {
