@@ -8,7 +8,7 @@ block_comment_inner = { (!"*/" ~ ANY)* }
 
 ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
-ron_file = { SOI ~ extension* ~ value ~ EOI }
+ron_file = { SOI ~ extension* ~ value ~ &EOI }
 extension = {
     "#" ~ "!" ~ "[" ~ "enable" ~ "(" ~
     ident ~ ("," ~ ident)* ~ ","? ~

@@ -1,14 +1,11 @@
 mod display;
 
 use crate::parser::Rule;
-use itertools::Itertools;
 use pest::iterators::Pair;
-use std::collections::BTreeSet;
 
 // structured representation of a single RON file
 pub struct FileText {
-    extensions: BTreeSet<String>, // btree for printing in alphabetical order
-    ron_text: TextFragment,
+    ron_text: Vec<TextFragment>,
 }
 
 // wrapper over a RON value with minimum length required for proper formatting
@@ -19,6 +16,7 @@ pub struct TextFragment {
 
 // the actual underlying RON value text slice
 pub enum RonValue {
+    ExtensionBlock(Vec<String>),
     Atom(String), // atomic types: bool, char, str, int, float, unit type
     List(Vec<TextFragment>),
     Map(Vec<(TextFragment, TextFragment)>),
@@ -36,24 +34,30 @@ impl FileText {
     pub fn parse_from(pair: Pair<Rule>) -> Self {
         assert!(pair.as_rule() == Rule::ron_file);
 
-        let mut item_iter = pair.into_inner();
-        let extensions = item_iter
-            .take_while_ref(|item| item.as_rule() == Rule::extension)
-            .flat_map(Pair::into_inner)
-            .map(|ext_name| ext_name.as_str().into())
+        let ron_text = pair
+            .into_inner()
+            .map(TextFragment::from)
             .collect();
-        let ron_text = item_iter.next().map(TextFragment::from).unwrap();
 
-        FileText {
-            extensions,
-            ron_text,
-        }
+        FileText { ron_text }
     }
 }
 
 impl TextFragment {
     fn from(pair: Pair<Rule>) -> Self {
         match pair.as_rule() {
+            Rule::extension => {
+                let exts = pair
+                    .into_inner()
+                    .map(|ext| ext.as_str().to_string())
+                    .collect();
+
+                TextFragment {
+                    minimum_length: 0, //TODO: don't care about this for now
+                    ron_value: RonValue::ExtensionBlock(exts),
+                }
+            }
+
             Rule::bool
             | Rule::char
             | Rule::string
@@ -197,7 +201,7 @@ impl TextFragment {
             }
 
             // handled in other rules
-            _ => unreachable!(),
+            _ => unreachable!("{:?}", pair.as_rule()),
         }
     }
 }

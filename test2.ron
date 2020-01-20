@@ -1,0 +1,24 @@
+// foo
+#![enable(foo)] // foo
+
+// fooo
+GameConfig( // optional struct name
+    window_size: (800, 600), //foo
+    window_title: "PAC-MAN",
+    fullscreen: false,
+    
+    mouse_sensitivity: 1.4,
+    key_bindings: { // foo
+        "up": Up,
+        "down": Down,
+        "left": Left,
+        "right": Right,
+    }, // foo
+    
+
+    //foo
+    difficulty_options: (
+        start_difficulty: Easy,
+        adaptive: false,
+    ),
+)

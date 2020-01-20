@@ -13,7 +13,6 @@ impl Config {
     const MAX_LINE_WIDTH: usize = 40;
 }
 
-
 pub fn get_config() -> Config {
     let matches = get_clap_matches();
 

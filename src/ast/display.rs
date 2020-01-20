@@ -7,24 +7,12 @@ impl FileText {
     pub fn pretty_print(&self, config: &config::Config) -> String {
         let mut output = String::new();
 
-        if !self.extensions.is_empty() {
-            self.write_extensions(&mut output);
+        for item in &self.ron_text {
+            writeln!(output, "{}", item.format(config))
+                .expect("unable to write formatted RON output");
         }
-        self.write_ron_value(&mut output, config);
 
         output
-    }
-
-    fn write_extensions(&self, output: &mut dyn Write) {
-        let extensions_inner = self.extensions.iter().join(", ");
-
-        writeln!(output, "#![enable({})]", extensions_inner)
-            .expect("unable to write extensions");
-    }
-
-    fn write_ron_value(&self, output: &mut dyn Write, config: &config::Config) {
-        writeln!(output, "{}", self.ron_text.format(config))
-            .expect("unable to write formatted RON output");
     }
 }
 
@@ -41,7 +29,9 @@ impl TextFragment {
         let projected_width =
             indent_level * config.soft_tab_width + self.minimum_length;
 
-        if projected_width > config.max_line_width {
+        if let RonValue::ExtensionBlock(exts) = &self.ron_value {
+            format!("#![enable({})]", exts.join(", "))
+        } else if projected_width > config.max_line_width {
             self.to_multiline(indent_level, config)
         } else {
             self.to_single_line()
@@ -58,6 +48,7 @@ impl TextFragment {
         }
 
         match &self.ron_value {
+            RonValue::ExtensionBlock(_) => unreachable!(),
             RonValue::Atom(value) => value.clone(),
 
             RonValue::List(elements) => {
@@ -152,6 +143,7 @@ impl TextFragment {
 
     fn to_single_line(&self) -> String {
         match &self.ron_value {
+            RonValue::ExtensionBlock(_) => unreachable!(),
             RonValue::Atom(value) => value.clone(),
 
             RonValue::List(elements) => {
