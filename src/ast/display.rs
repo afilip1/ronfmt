@@ -8,7 +8,7 @@ impl FileText {
         let mut output = String::new();
 
         for item in &self.ron_text {
-            writeln!(output, "{}", item.format(config))
+            write!(output, "{}", item.format(config))
                 .expect("unable to write formatted RON output");
         }
 
@@ -30,7 +30,7 @@ impl TextFragment {
             indent_level * config.soft_tab_width + self.minimum_length;
 
         if let RonValue::ExtensionBlock(exts) = &self.ron_value {
-            format!("#![enable({})]", exts.join(", "))
+            format!("#![enable({})]\n", exts.join(", "))
         } else if projected_width > config.max_line_width {
             self.to_multiline(indent_level, config)
         } else {
@@ -49,6 +49,15 @@ impl TextFragment {
 
         match &self.ron_value {
             RonValue::ExtensionBlock(_) => unreachable!(),
+
+            RonValue::StandaloneComment(comment) => format!(
+                "{indent}// {comment}\n",
+                indent = indent(indent_level, config),
+                comment = comment
+            ),
+
+            RonValue::TrailingComment(_) => String::new(),
+
             RonValue::Atom(value) => value.clone(),
 
             RonValue::List(elements) => {
@@ -144,6 +153,11 @@ impl TextFragment {
     fn to_single_line(&self) -> String {
         match &self.ron_value {
             RonValue::ExtensionBlock(_) => unreachable!(),
+
+            RonValue::StandaloneComment(comment) => format!("// {}\n", comment),
+
+            RonValue::TrailingComment(_) => String::new(),
+
             RonValue::Atom(value) => value.clone(),
 
             RonValue::List(elements) => {

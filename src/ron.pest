@@ -1,10 +1,13 @@
-// implicit
-WHITESPACE = _{ " " | "\n" | "\t" | "\r" }
-COMMENT = _{ line_comment | block_comment }
-line_comment = { "//" ~ line_comment_inner ~ (NEWLINE | &EOI) }
-line_comment_inner = { (!NEWLINE ~ ANY)* }
-block_comment = { "/*" ~ (block_comment | block_comment_inner)  ~ "*/" }
-block_comment_inner = { (!"*/" ~ ANY)* }
+// --- whitespace and comments ---
+
+WHITESPACE = _{ " " | "\t" | (NEWLINE ~ !(WHITESPACE* ~ "//") )}
+COMMENT = ${standalone | trailing}
+
+standalone = {(SOI|NEWLINE) ~ WHITESPACE* ~ "//" ~ WHITESPACE* ~ inner}
+trailing = {"//" ~ inner}
+inner = {(!NEWLINE ~ ANY)*}
+
+// --- whitespace and comments - end ---
 
 ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 

@@ -17,6 +17,7 @@ pub struct TextFragment {
 // the actual underlying RON value text slice
 pub enum RonValue {
     ExtensionBlock(Vec<String>),
+
     Atom(String), // atomic types: bool, char, str, int, float, unit type
     List(Vec<TextFragment>),
     Map(Vec<(TextFragment, TextFragment)>),
@@ -28,16 +29,16 @@ pub enum RonValue {
         maybe_ident: Option<String>,
         fields: Vec<(String, TextFragment)>,
     },
+
+    StandaloneComment(String),
+    TrailingComment(String),
 }
 
 impl FileText {
     pub fn parse_from(pair: Pair<Rule>) -> Self {
         assert!(pair.as_rule() == Rule::ron_file);
 
-        let ron_text = pair
-            .into_inner()
-            .map(TextFragment::from)
-            .collect();
+        let ron_text = pair.into_inner().map(TextFragment::from).collect();
 
         FileText { ron_text }
     }
@@ -55,6 +56,26 @@ impl TextFragment {
                 TextFragment {
                     minimum_length: 0, //TODO: don't care about this for now
                     ron_value: RonValue::ExtensionBlock(exts),
+                }
+            }
+
+            Rule::standalone => {
+                let comment =
+                    pair.into_inner().next().unwrap().as_str().to_string();
+
+                TextFragment {
+                    minimum_length: 0, //TODO: don't care for now
+                    ron_value: RonValue::StandaloneComment(comment),
+                }
+            }
+
+            Rule::trailing => {
+                let comment =
+                    pair.into_inner().next().unwrap().as_str().to_string();
+
+                TextFragment {
+                    minimum_length: 0, //TODO: don't care for now
+                    ron_value: RonValue::TrailingComment(comment),
                 }
             }
 
@@ -195,8 +216,8 @@ impl TextFragment {
                 }
             }
 
-            // necessary wrapper due to the grammar structure
-            Rule::value => {
+            // necessary wrappers due to the grammar structure
+            Rule::COMMENT | Rule::value => {
                 TextFragment::from(pair.into_inner().next().unwrap())
             }
 
