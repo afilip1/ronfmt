@@ -1,5 +1,7 @@
 # ronfmt - simple autoformatting tool for RON
 
+# The project is frozen indefinitely. You are welcome to fork it or use as reference for your own implementation. Please contact me if you'd like to become a new maintainer for this project.
+
 # Important note:
 The tool is in prealpha state. Bugs may occur, leading to loss of data. The tool creates automatic backups of files it works on, but take precautions when using it.
 **The tool does not support comments at this time. When formatting, they will be discarded. Only use it if you don't have/care for comments in your files.**
